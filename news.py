@@ -1,0 +1,136 @@
+"""
+ดึงและกรองข่าวจาก ForexFactory weekly calendar (JSON)
+โครงสร้างแต่ละ event:
+  {
+    "title": "Core CPI m/m",
+    "country": "USD",
+    "date": "2026-06-18T08:30:00-04:00",   # ISO 8601 พร้อม offset
+    "impact": "High",                        # High | Medium | Low | Holiday
+    "forecast": "0.3%",
+    "previous": "0.2%",
+    "actual": ""                             # ว่างถ้ายังไม่ออก, มีค่าเมื่อออกแล้ว
+  }
+"""
+import json
+import urllib.request
+from datetime import datetime, date
+from zoneinfo import ZoneInfo
+import config
+
+
+def fetch_events():
+    """ดึง event ทั้งสัปดาห์จาก feed"""
+    req = urllib.request.Request(
+        config.FF_FEED_URL,
+        headers={"User-Agent": "Mozilla/5.0 (XAUUSD-Alert)"},
+    )
+    with urllib.request.urlopen(req, timeout=25) as resp:
+        return json.loads(resp.read().decode("utf-8"))
+
+
+def parse_dt(ev):
+    """แปลง field date เป็น datetime (timezone-aware)"""
+    try:
+        return datetime.fromisoformat(ev["date"])
+    except Exception:
+        return None
+
+
+def to_local(dt):
+    """แปลงเป็นเขตเวลาท้องถิ่นของผู้ใช้"""
+    if dt is None:
+        return None
+    return dt.astimezone(ZoneInfo(config.LOCAL_TZ))
+
+
+def is_gold_relevant(ev):
+    """กรองเฉพาะข่าวที่กระทบทอง: สกุลเงิน + ระดับ impact ที่สนใจ"""
+    if ev.get("country") not in config.WATCH_CURRENCIES:
+        return False
+    if ev.get("impact") not in config.WATCH_IMPACTS:
+        return False
+    return True
+
+
+def is_top_tier(ev):
+    """ข่าวแรงพิเศษ (NFP/CPI/FOMC ...) -> ติดป้าย 🔥"""
+    title = ev.get("title", "")
+    return any(kw.lower() in title.lower() for kw in config.HIGH_IMPACT_KEYWORDS)
+
+
+def impact_icon(ev):
+    imp = ev.get("impact", "")
+    if is_top_tier(ev):
+        return "🔥"
+    return {"High": "🔴", "Medium": "🟠", "Low": "🟡"}.get(imp, "⚪")
+
+
+def events_for_day(events, day: date):
+    """คืนข่าวที่กระทบทองของวันที่ระบุ (ตามเขตเวลาท้องถิ่น) เรียงตามเวลา"""
+    out = []
+    for ev in events:
+        if not is_gold_relevant(ev):
+            continue
+        ldt = to_local(parse_dt(ev))
+        if ldt and ldt.date() == day:
+            out.append((ldt, ev))
+    out.sort(key=lambda x: x[0])
+    return out
+
+
+def forecast_trend(ev):
+    """
+    แนวโน้มคาดการณ์ต่อทอง แบบหยาบ ๆ จาก forecast เทียบ previous
+    หลักการ: ตัวเลขเศรษฐกิจสหรัฐแข็งแกร่ง/เงินเฟ้อสูง -> USD แข็ง -> มักกดทองลง
+    (เป็นแนวทางคร่าว ๆ ไม่ใช่คำแนะนำการลงทุน)
+    """
+    f = _num(ev.get("forecast"))
+    p = _num(ev.get("previous"))
+    if f is None or p is None:
+        return "—"
+    if abs(f - p) < 1e-9:
+        return "ทรงตัว → ผลต่อทองจำกัด"
+    stronger = f > p
+    # ข่าวจ้างงาน/เงินเฟ้อ/GDP: ตัวเลขสูง = USD แข็ง = กดทอง
+    return (
+        "คาดตัวเลขสูงขึ้น → USD แข็ง อาจกดทองลง" if stronger
+        else "คาดตัวเลขลดลง → USD อ่อน อาจหนุนทองขึ้น"
+    )
+
+
+def market_view(ev):
+    """มุมมองตลาดก่อนข่าวออก (forecast = ฉันทามติตลาด)"""
+    fc = ev.get("forecast")
+    pv = ev.get("previous")
+    if not fc:
+        return "🔮 ตลาดยังไม่มีตัวเลขคาดการณ์ชัดเจน"
+    line = f"🔮 ตลาดคาด: {fc}"
+    if pv:
+        line += f" (ครั้งก่อน {pv})"
+    f, p = _num(fc), _num(pv)
+    if f is not None and p is not None and abs(f - p) > 1e-9:
+        if f > p:
+            line += " — ตลาดมองตัวเลขแข็งขึ้น เอนไป USD แข็ง/กดทอง"
+        else:
+            line += " — ตลาดมองตัวเลขอ่อนลง เอนไป USD อ่อน/หนุนทอง"
+    else:
+        line += " — ตลาดมองทรงตัว"
+    line += "\n   ↳ ถ้า actual สูงกว่าคาด = กดทอง🔻 / ต่ำกว่าคาด = หนุนทอง🔺"
+    return line
+
+
+def minutes_to_event(ev, now_local):
+    """นาทีที่เหลือก่อนข่าวออก (บวก=ยังไม่ถึง, ลบ=ผ่านมาแล้ว)"""
+    ldt = to_local(parse_dt(ev))
+    if ldt is None:
+        return None
+    return (ldt - now_local).total_seconds() / 60.0
+
+
+def _num(s):
+    if not s:
+        return None
+    try:
+        return float(str(s).replace("%", "").replace("K", "").replace("M", "").replace(",", "").strip())
+    except ValueError:
+        return None
