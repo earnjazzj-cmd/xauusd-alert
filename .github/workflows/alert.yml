@@ -2,14 +2,14 @@ name: XAUUSD Gold Alert
 
 on:
   schedule:
-    - cron: '*/30 * * * *'    # เปิดรอบใหม่ทุก 30 นาที (แต่ละรอบรันค้าง ~28 นาที)
-  workflow_dispatch:           # ปุ่มกดรันเองได้ในแท็บ Actions
+    - cron: '*/30 * * * *'
+  workflow_dispatch:
 
 permissions:
-  contents: write              # ให้ commit ไฟล์สถานะกลับ repo ได้
+  contents: write
 
 concurrency:
-  group: xauusd-alert          # กันรันซ้อนกัน (รอบใหม่จะรอรอบเดิมจบ)
+  group: xauusd-alert
   cancel-in-progress: false
 
 jobs:
