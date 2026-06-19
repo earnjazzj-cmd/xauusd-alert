@@ -15,6 +15,7 @@ from zoneinfo import ZoneInfo
 import config
 import realtime_alert as rt
 import morning_brief
+import gen_dashboard_data
 
 LOOP_SECONDS = int(os.environ.get("LOOP_SECONDS", "1700"))   # ~28 นาที/รอบ
 POLL_SEC = int(os.environ.get("LOOP_POLL_SEC", "60"))         # เช็คทุก 60 วิ
@@ -47,6 +48,11 @@ def main():
         except Exception as e:
             print("[ci_loop] realtime error:", e)
         maybe_brief()
+        # อัปเดตข้อมูลหน้าเว็บ Dashboard
+        try:
+            gen_dashboard_data.build()
+        except Exception as e:
+            print("[ci_loop] dashboard error:", e)
         time.sleep(POLL_SEC)
     print("[ci_loop] จบรอบ — GitHub จะเปิดรอบใหม่ต่อ")
 

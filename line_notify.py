@@ -42,6 +42,41 @@ def push(text: str) -> bool:
     return False
 
 
+def push_flex(alt_text: str, contents: dict) -> bool:
+    """ส่งการ์ด Flex Message เข้า LINE (UI สวย). alt_text = ข้อความสำรองตอนแจ้งเตือน"""
+    if not config.LINE_CHANNEL_ACCESS_TOKEN or not config.LINE_TO:
+        print("[LINE] ยังไม่ได้ตั้งค่า token/userId")
+        return False
+    payload = {
+        "to": config.LINE_TO,
+        "messages": [{
+            "type": "flex",
+            "altText": alt_text[:400],
+            "contents": contents,
+        }],
+    }
+    data = json.dumps(payload).encode("utf-8")
+    req = urllib.request.Request(
+        PUSH_URL, data=data,
+        headers={
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {config.LINE_CHANNEL_ACCESS_TOKEN}",
+        },
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=20) as resp:
+            ok = resp.status == 200
+            if ok:
+                print("[LINE] ส่งการ์ดสำเร็จ")
+            return ok
+    except urllib.error.HTTPError as e:
+        print(f"[LINE] HTTP error {e.code}: {e.read().decode('utf-8', 'ignore')}")
+    except Exception as e:
+        print(f"[LINE] error: {e}")
+    return False
+
+
 if __name__ == "__main__":
     # ทดสอบส่งข้อความ: python line_notify.py
     push("✅ ทดสอบระบบแจ้งเตือน XAUUSD เชื่อมต่อ LINE สำเร็จ")

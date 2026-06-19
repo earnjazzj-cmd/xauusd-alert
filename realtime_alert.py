@@ -68,16 +68,18 @@ def check_once(state):
         ldt = news.to_local(news.parse_dt(ev))
         t = ldt.strftime("%H:%M") if ldt else "-"
         icon = news.impact_icon(ev)
-        msg = (
-            f"⚡ ข่าวออกแล้ว! {icon} {ev['title']}\n"
-            f"เวลา {t} น. | ระดับ {ev.get('impact','')}\n"
-            f"Actual: {actual}\n"
-            f"คาดการณ์: {ev.get('forecast') or '-'} | ครั้งก่อน: {ev.get('previous') or '-'}\n"
-            f"{_surprise(ev)}\n"
-            f"⚠️ ข้อมูลประกอบ ไม่ใช่คำแนะนำลงทุน"
-        )
-        print(msg, "\n")
-        if line_notify.push(msg):
+        alt = f"⚡ {ev['title']} ออกแล้ว: {actual} ({_surprise(ev)})"
+        print(alt, "\n")
+        # ส่งเป็นการ์ด Flex (สวย) ถ้าพลาดค่อย fallback เป็นข้อความธรรมดา
+        sent = False
+        try:
+            import flex
+            sent = line_notify.push_flex(alt, flex.alert_bubble(ev, t))
+        except Exception as e:
+            print("[realtime] flex error:", e)
+        if not sent:
+            sent = line_notify.push(alt)
+        if sent:
             state.add(key)
             _save_state(state)
 

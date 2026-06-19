@@ -34,8 +34,20 @@ def build_message():
 
 
 def main():
+    today = datetime.now(ZoneInfo(config.LOCAL_TZ)).date()
+    events = news.fetch_events()
+    todays = news.events_for_day(events, today)
     msg = build_message()
     print(msg)
+    # ส่งเป็นการ์ด Flex (สวย) ถ้าพลาด fallback เป็นข้อความ
+    try:
+        import flex
+        rows = [(news.impact_icon(ev), ldt.strftime("%H:%M"), ev) for ldt, ev in todays]
+        bubble = flex.brief_bubble(today.strftime("%d/%m/%Y"), rows)
+        if line_notify.push_flex("☀️ สรุปข่าวเช้า XAUUSD", bubble):
+            return
+    except Exception as e:
+        print("[brief] flex error:", e)
     line_notify.push(msg)
 
 
