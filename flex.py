@@ -5,6 +5,9 @@
 """
 import news
 
+# ลิงก์กราฟ XAUUSD (กดการ์ด/ปุ่มแล้วเปิดอันนี้)
+CHART_URL = "https://th.tradingview.com/chart/qbuIm7aO/?symbol=FOREXCOM%3AXAUUSD"
+
 # สีตามความแรง
 COLOR_HIGH = "#E53935"     # แดง
 COLOR_MED = "#FB8C00"      # ส้ม
@@ -48,11 +51,12 @@ def alert_bubble(ev, time_str):
     head_color = _impact_color(ev)
     return {
         "type": "bubble",
+        "action": {"type": "uri", "label": "ดูกราฟ", "uri": CHART_URL},  # กดทั้งใบ -> เปิดกราฟ
         "header": {
             "type": "box", "layout": "vertical", "backgroundColor": head_color,
             "paddingAll": "12px",
             "contents": [
-                {"type": "text", "text": "⚡ ข่าวออกแล้ว", "color": "#FFFFFF",
+                {"type": "text", "text": "⚡ ข่าวออกแล้ว · แตะเพื่อดูกราฟ", "color": "#FFFFFF",
                  "weight": "bold", "size": "sm"},
                 {"type": "text", "text": ev.get("title", ""), "color": "#FFFFFF",
                  "weight": "bold", "size": "lg", "wrap": True},
@@ -77,8 +81,7 @@ def alert_bubble(ev, time_str):
         "footer": {
             "type": "box", "layout": "vertical", "contents": [
                 {"type": "button", "style": "primary", "color": COLOR_GOLD, "height": "sm",
-                 "action": {"type": "uri", "label": "ดูกราฟ XAUUSD",
-                            "uri": "https://www.tradingview.com/symbols/XAUUSD/"}},
+                 "action": {"type": "uri", "label": "📈 ดูกราฟ XAUUSD", "uri": CHART_URL}},
             ],
         },
     }
@@ -114,10 +117,11 @@ def brief_bubble(today_str, rows):
 
     return {
         "type": "bubble", "size": "mega",
+        "action": {"type": "uri", "label": "ดูกราฟ", "uri": CHART_URL},
         "header": {
             "type": "box", "layout": "vertical", "backgroundColor": COLOR_GOLD,
             "paddingAll": "12px",
-            "contents": [{"type": "text", "text": "☀️ สรุปข่าวเช้า XAUUSD",
+            "contents": [{"type": "text", "text": "☀️ สรุปข่าวเช้า XAUUSD · แตะดูกราฟ",
                           "color": "#FFFFFF", "weight": "bold", "size": "lg"}],
         },
         "body": {"type": "box", "layout": "vertical", "paddingAll": "14px", "contents": body},
