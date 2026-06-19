@@ -40,10 +40,21 @@ def main():
     msg = build_message()
     print(msg)
     # ส่งเป็นการ์ด Flex (สวย) ถ้าพลาด fallback เป็นข้อความ
+    # มุมมองนักลงทุน (พาดหัวข่าวล่าสุด) — best effort
+    heads = []
+    try:
+        import headlines
+        heads = headlines.fetch_headlines(4)
+    except Exception as e:
+        print("[brief] headlines error:", e)
+
+    if heads:
+        msg += "\n\n📰 นักลงทุนกำลังพูดถึง:\n" + "\n".join("• " + h["title"] for h in heads)
+
     try:
         import flex
         rows = [(news.impact_icon(ev), ldt.strftime("%H:%M"), ev) for ldt, ev in todays]
-        bubble = flex.brief_bubble(today.strftime("%d/%m/%Y"), rows)
+        bubble = flex.brief_bubble(today.strftime("%d/%m/%Y"), rows, headlines=heads)
         if line_notify.push_flex("☀️ สรุปข่าวเช้า XAUUSD", bubble):
             return
     except Exception as e:

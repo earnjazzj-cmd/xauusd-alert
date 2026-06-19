@@ -48,11 +48,19 @@ def build():
             "direction": _direction(ev),
         })
     out.sort(key=lambda x: x["datetime"])
+    # มุมมองนักลงทุน (พาดหัวข่าว) — best effort
+    heads = []
+    try:
+        import headlines
+        heads = headlines.fetch_headlines(6)
+    except Exception as e:
+        print("[dashboard] headlines error:", e)
     data = {
         "updated": datetime.now(ZoneInfo(config.LOCAL_TZ)).isoformat(),
         "tz": config.LOCAL_TZ,
         "count": len(out),
         "events": out,
+        "headlines": heads,
     }
     os.makedirs(DOCS_DIR, exist_ok=True)
     with open(OUT, "w", encoding="utf-8") as f:
