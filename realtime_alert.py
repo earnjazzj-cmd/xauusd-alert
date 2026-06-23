@@ -47,13 +47,16 @@ def _surprise(ev):
     return "ต่ำกว่าคาด → USD อ่อน มักหนุนทองขึ้น 🔺"
 
 
-def check_once(state):
-    """ตรวจรอบเดียว: หา actual ใหม่แล้วแจ้ง"""
-    try:
-        events = news.fetch_events()
-    except Exception as e:
-        print(f"[poll] ดึงข่าวไม่สำเร็จ: {e}")
-        return
+def check_once(state, events=None):
+    """ตรวจรอบเดียว: หา actual ใหม่แล้วแจ้ง
+    events: ถ้าส่งมาจะใช้เลย (กันดึงซ้ำ), ถ้าไม่ส่งจะดึงเอง
+    """
+    if events is None:
+        try:
+            events = news.fetch_events()
+        except Exception as e:
+            print(f"[poll] ดึงข่าวไม่สำเร็จ: {e}")
+            return
 
     for ev in events:
         if not news.is_gold_relevant(ev):

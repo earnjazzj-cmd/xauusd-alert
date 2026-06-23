@@ -12,20 +12,60 @@
   }
 """
 import json
+import os
+import time
 import urllib.request
 from datetime import datetime, date
 from zoneinfo import ZoneInfo
 import config
 
+# ===== cache: ดึง feed ครั้งเดียวแล้วใช้ซ้ำ กัน HTTP 429 (Too Many Requests) =====
+_CACHE = {"t": 0.0, "data": None}
+_CACHE_TTL = int(os.environ.get("FEED_CACHE_TTL", "1800"))   # จำตารางข่าวได้นาน 30 นาที (ลดการดึง)
 
-def fetch_events():
-    """ดึง event ทั้งสัปดาห์จาก feed"""
-    req = urllib.request.Request(
-        config.FF_FEED_URL,
-        headers={"User-Agent": "Mozilla/5.0 (XAUUSD-Alert)"},
-    )
+_HEADERS = {
+    "User-Agent": ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                   "(KHTML, like Gecko) Chrome/124.0 Safari/537.36"),
+    "Accept": "application/json,text/plain,*/*",
+    "Accept-Language": "en-US,en;q=0.9",
+}
+
+
+def _http_get(url):
+    req = urllib.request.Request(url, headers=_HEADERS)
     with urllib.request.urlopen(req, timeout=25) as resp:
         return json.loads(resp.read().decode("utf-8"))
+
+
+def fetch_events(force=False):
+    """
+    ดึง event ทั้งสัปดาห์จาก feed (มี cache + ลองใหม่เมื่อโดน 429)
+    คืน cache เดิมถ้ายังไม่หมดอายุ -> ลดจำนวน request ลงมาก
+    """
+    now = time.time()
+    if not force and _CACHE["data"] is not None and (now - _CACHE["t"]) < _CACHE_TTL:
+        return _CACHE["data"]
+
+    last_err = None
+    for attempt in range(3):
+        try:
+            data = _http_get(config.FF_FEED_URL)
+            _CACHE["data"] = data
+            _CACHE["t"] = time.time()
+            return data
+        except urllib.error.HTTPError as e:
+            last_err = e
+            if e.code == 429:
+                time.sleep(20 * (attempt + 1))   # โดน rate limit -> หน่วงแล้วลองใหม่
+                continue
+            raise
+        except Exception as e:
+            last_err = e
+            time.sleep(5)
+    # ถ้ายังล้มเหลว แต่มี cache เก่าอยู่ ใช้ของเก่าไปก่อน (ดีกว่าไม่มีเลย)
+    if _CACHE["data"] is not None:
+        return _CACHE["data"]
+    raise last_err
 
 
 def parse_dt(ev):

@@ -8,10 +8,10 @@ import xml.etree.ElementTree as ET
 
 # ฟีดข่าวการเงิน/ทอง (ลองทีละอันจนกว่าจะได้)
 FEEDS = [
-    "https://www.investing.com/rss/commodities_Gold.rss",
+    "https://www.investing.com/rss/commodities.rss",          # สินค้าโภคภัณฑ์ (ทอง)
     "https://www.fxstreet.com/rss/news",
-    "https://www.investing.com/rss/news_285.rss",   # Economy
-    "https://feeds.marketwatch.com/marketwatch/marketpulse/",
+    "https://feeds.content.dowjones.io/public/rss/mw_marketpulse",
+    "https://www.cnbc.com/id/20910258/device/rss/rss.html",   # CNBC Markets
 ]
 
 KEYWORDS = ["gold", "xau", "fed", "fomc", "powell", "dollar", "rate",
