@@ -73,6 +73,23 @@ def _idle_sleep(events, now):
 
 def main():
     print("[ci_loop] เริ่มทำงาน: จำตารางข่าว + เร่งเช็คเฉพาะช่วงข่าว")
+    # --- เช็คตอนเริ่ม: ดึงปฏิทินให้เห็นชัดว่าใช้ได้ไหม ---
+    try:
+        ev0 = news.fetch_events(force=True)
+        gold = [e for e in ev0 if news.is_gold_relevant(e)]
+        print(f"[ci_loop] ✅ ดึงปฏิทินสำเร็จ: ทั้งสัปดาห์มี {len(gold)} ข่าว USD High/Medium")
+        now0 = _now()
+        todays = [e for e in gold
+                  if (d := news.to_local(news.parse_dt(e))) and d.date() == now0.date()]
+        if todays:
+            print(f"[ci_loop] วันนี้มี {len(todays)} ข่าว:")
+            for e in todays:
+                d = news.to_local(news.parse_dt(e))
+                print(f"   - {d.strftime('%H:%M')} {e.get('title')} ({e.get('impact')})")
+        else:
+            print("[ci_loop] วันนี้ไม่มีข่าว USD High/Medium")
+    except Exception as e:
+        print("[ci_loop] ❌ ดึงปฏิทินไม่สำเร็จ:", e)
     state = rt._load_state()
     end = time.time() + LOOP_SECONDS
 
