@@ -2,7 +2,7 @@ name: XAUUSD Gold Alert
 
 on:
   schedule:
-    - cron: '*/30 * * * *'
+    - cron: '*/5 * * * *'
   workflow_dispatch:
 
 permissions:
@@ -13,33 +13,28 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  run:
+  check:
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 8
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-
-      - name: Run alert loop
+      - name: Run check
         env:
           LINE_CHANNEL_ACCESS_TOKEN: ${{ secrets.LINE_CHANNEL_ACCESS_TOKEN }}
           LINE_TO: ${{ secrets.LINE_TO }}
           LOCAL_TZ: Asia/Bangkok
           WATCH_CURRENCIES: USD
           WATCH_IMPACTS: High,Medium
-          LOOP_SECONDS: '1700'
-          LOOP_POLL_SEC: '60'
-        run: python ci_loop.py
-
+        run: python ci_check.py
       - name: Save state back to repo
         if: always()
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add alerted_state.json last_brief.txt 2>/dev/null || true
+          git add alerted_state.json last_brief.txt docs/data.json 2>/dev/null || true
           if git diff --cached --quiet; then
             echo "no state change"
           else
